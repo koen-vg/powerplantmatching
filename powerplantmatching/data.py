@@ -287,7 +287,19 @@ def GEO(raw=False, update=False, config=None):
     )
     if raw:
         return geo
+
     geo = geo.rename(columns=rename_cols)
+
+    geo_countries = geo.Country.unique()
+    cmap = {}
+    for c in geo_countries:
+        try:
+            cc = pycountry.countries.search_fuzzy(c)[0].alpha_2
+            cmap[c] = cc
+        except LookupError:
+            pass
+
+    geo = geo.replace({"Country": cmap})
 
     units = pd.read_csv(
         get_raw_file("GEO_units", update=update, config=config), low_memory=False
@@ -372,7 +384,7 @@ def CARMA(raw=False, update=False, config=None):
                 "Geoposition": "Geoposition",
                 "cap": "Capacity",
                 "city": "location",
-                "country": "Country",
+                "iso2": "Country",
                 "fuel1": "Fueltype",
                 "lat": "lat",
                 "lon": "lon",
@@ -599,15 +611,18 @@ def GPD(raw=False, update=False, config=None, filter_other_dbs=True):
     other_dbs = []
     if filter_other_dbs:
         other_dbs = ["GEODB", "Open Power System Data", "ENTSOE"]
-    countries = config["target_countries"]
+
+    countries2 = config['target_countries']
+    ccmap = {pycountry.countries.get(alpha_2=c).alpha_3: c for c in countries2}
+    countries3 = ccmap.keys()
+
     return (
         df.rename(columns=lambda x: x.title())
-        .query("Country_Long in @countries &" " Source not in @other_dbs")
-        .drop(columns="Country")
+        .query("Country in @countries3 &" " Geolocation_Source not in @other_dbs")
+        .drop(columns="Country_Long")
         .rename(
             columns={
                 "Gppd_Idnr": "projectID",
-                "Country_Long": "Country",
                 "Primary_Fuel": "Fueltype",
                 "Latitude": "lat",
                 "Longitude": "lon",
@@ -626,6 +641,7 @@ def GPD(raw=False, update=False, config=None, filter_other_dbs=True):
                 }
             )
         )
+        .replace(dict(Country=ccmap))
         .pipe(clean_powerplantname)
         .pipe(set_column_name, "GPD")
         .pipe(config_filter, name="GPD", config=config)
