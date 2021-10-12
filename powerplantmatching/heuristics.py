@@ -66,7 +66,7 @@ def extend_by_non_matched(
 
     if isinstance(extend_by, str):
         label = extend_by
-        extend_by = getattr(data, extend_by)()
+        extend_by = getattr(data, extend_by)(config=config)
     label = get_name(extend_by) if label is None else label
 
     if df.columns.nlevels > 1:

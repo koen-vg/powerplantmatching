@@ -199,8 +199,14 @@ def matched_data(
             use_saved_matches.
 
     """
+    # If no config is given, use the default.
     if config is None:
         config = get_config()
+    # Otherwise, update the default config with the given config.
+    else:
+        default = get_config()
+        default.update(config)
+        config = default
 
     if update_all:
         collection_kwargs["use_saved_aggregation"] = False
@@ -246,7 +252,7 @@ def matched_data(
     matching_sources = [
         list(to_dict_if_string(a))[0] for a in config["matching_sources"]
     ]
-    matched = collect(matching_sources, **collection_kwargs)
+    matched = collect(matching_sources, config=config, **collection_kwargs)
 
     if isinstance(config["fully_included_sources"], list):
         for source in config["fully_included_sources"]:
